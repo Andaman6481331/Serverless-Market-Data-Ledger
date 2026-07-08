@@ -1,0 +1,12 @@
+# Serverless-Market-Data-Ledger — Python dependencies
+#
+# Bounds are conservative: lower = a broadly-available stable release the ported
+# code's APIs are compatible with; upper = the next breaking major.
+# The trailing comment on each line is the exact version verified against the
+# Scout Sniper source venv (2026-07). Relax/tighten after your first clean run.
+
+aiohttp>=3.9,<4        # verified 3.13.3  — bronze/ Dukascopy CDN fetch
+pandas>=2.2,<4         # verified 3.0.1   — all layers
+pyarrow>=15,<24        # verified 23.0.1  — bronze/ Parquet write
+ta>=0.11,<0.12         # verified 0.11.0  — gold/ ATR (AverageTrueRange)
+numpy>=1.26,<3         # verified 2.4.3   — gold/ ATR
