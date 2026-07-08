@@ -8,5 +8,6 @@
 aiohttp>=3.9,<4        # verified 3.13.3  — bronze/ Dukascopy CDN fetch
 pandas>=2.2,<4         # verified 3.0.1   — all layers
 pyarrow>=15,<24        # verified 23.0.1  — bronze/ Parquet write
+duckdb>=1.0,<2         # verified 1.5.1   — gold/ tick->OHLC resample
 ta>=0.11,<0.12         # verified 0.11.0  — gold/ ATR (AverageTrueRange)
 numpy>=1.26,<3         # verified 2.4.3   — gold/ ATR
