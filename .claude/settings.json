@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import aiohttp, pandas, pyarrow, duckdb; print\\('aiohttp', aiohttp.__version__\\); print\\('pandas', pandas.__version__\\); print\\('pyarrow', pyarrow.__version__\\); print\\('duckdb', duckdb.__version__\\)\")",
+      "PowerShell(python --version)",
+      "PowerShell(python -c \"import aiohttp, pandas, pyarrow, duckdb, ta, numpy; print\\('aiohttp', aiohttp.__version__\\); print\\('pandas', pandas.__version__\\); print\\('pyarrow', pyarrow.__version__\\); print\\('duckdb', duckdb.__version__\\); print\\('numpy', numpy.__version__\\)\")",
+      "PowerShell(Write-Output \"PYTHONHOME=$env:PYTHONHOME\"; Write-Output \"PYTHONPATH=$env:PYTHONPATH\"; Write-Output \"--- where python ---\"; \\(Get-Command python -All | Select-Object -ExpandProperty Source\\); Write-Output \"--- py launcher ---\"; try { py -0p } catch { Write-Output \"no py launcher\" }; Write-Output \"--- venvs ---\"; Get-ChildItem -Path . -Directory -Force | Select-Object -ExpandProperty Name)",
+      "PowerShell(py -3.12 -c \"import sys; print\\(sys.version\\)\")",
+      "PowerShell(py -3.12 -c \"import pandas, duckdb, aiohttp, pyarrow, numpy, ta; print\\('all present'\\)\" 2>&1)",
+      "PowerShell(py -3.11 -c \"import sys; print\\(sys.version\\)\")",
+      "PowerShell(py -3.11 -c \"import pandas, duckdb, aiohttp, pyarrow, numpy, ta; print\\('all present'\\)\" 2>&1)",
+      "PowerShell(py -3.11 -c \"import pandas, duckdb, aiohttp, pyarrow, numpy, ta; print\\('pandas', pandas.__version__\\); print\\('duckdb', duckdb.__version__\\); print\\('aiohttp', aiohttp.__version__\\); print\\('pyarrow', pyarrow.__version__\\); print\\('numpy', numpy.__version__\\); print\\('ta', ta.__version__\\)\")",
+      "PowerShell(py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\01fc62fa-13f1-40ca-8027-71f65c127847\\\\scratchpad\\\\test_gaps_synthetic.py\")",
+      "PowerShell(py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\01fc62fa-13f1-40ca-8027-71f65c127847\\\\scratchpad\\\\run_real_pipeline.py\")",
+      "Read(//c/Users/herby/.claude/projects/d--GitHub-Serverless-Market-Data-Ledger/**)",
+      "Read(//c/Users/herby/.claude/projects/d--GitHub-Serverless-Market-Data-Ledger/memory/**)",
+      "Bash(cat .gitignore; echo \"---engine---\"; ls -R engine 2>/dev/null | head; echo \"---frontend---\"; ls -R frontend 2>/dev/null | head; echo \"---search wide for parquet---\"; find /d/GitHub -maxdepth 4 -name '*.parquet' 2>/dev/null | head -30)",
+      "Read(//d/GitHub/**)",
+      "Read(//d/GitHub/GoldStream-ETL-Pipeline/data/bronze/XAUUSD//**)",
+      "Read(//d/GitHub/GoldStream-ETL-Pipeline/data/bronze/XAUUSD/year=2015//**)",
+      "Read(//d/GitHub/GoldStream-ETL-Pipeline/data/bronze/XAUUSD/year=2015/month=01//**)",
+      "Read(//d/GitHub/GoldStream-ETL-Pipeline/data/bronze/XAUUSD/year=2015/month=01/**)",
+      "Bash(py -3.11 -c \"import pandas, duckdb, pyarrow; print\\('pandas', pandas.__version__\\)\")",
+      "Bash(py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\2f47084e-6773-4e26-beb5-ba744687cf9f\\\\scratchpad\\\\repro_gaps.py\")",
+      "Bash(py -3.11 -c ' *)"
+    ]
+  }
+}
