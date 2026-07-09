@@ -38,7 +38,16 @@
       "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 -m engine.pipeline --symbol XAUUSD --start 2015-01-02 --end 2015-01-02 --dry-run --bronze-dir \"C:/Users/herby/AppData/Local/Temp/claude/d--GitHub-Serverless-Market-Data-Ledger/285945c2-2bac-4ae3-8ffd-da7df68eeabb/scratchpad/bronze_cli\")",
       "Bash(echo \"exit code: $?\")",
       "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 -c \"import engine.pipeline; print\\('final import OK'\\)\")",
-      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\285945c2-2bac-4ae3-8ffd-da7df68eeabb\\\\scratchpad\\\\verify_reconcile.py\")"
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\285945c2-2bac-4ae3-8ffd-da7df68eeabb\\\\scratchpad\\\\verify_reconcile.py\")",
+      "WebFetch(domain:twelvedata.com)",
+      "WebSearch",
+      "Bash(py -3.11 \"C:/Users/herby/AppData/Local/Temp/claude/d--GitHub-Serverless-Market-Data-Ledger/f269c32d-70ad-4c22-8622-2dd479362742/scratchpad/verify_live_source.py\")",
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 \"C:/Users/herby/AppData/Local/Temp/claude/d--GitHub-Serverless-Market-Data-Ledger/f269c32d-70ad-4c22-8622-2dd479362742/scratchpad/verify_live_source.py\")",
+      "Bash(py -3.11 -m engine.pipeline --mode live --dry-run --live-outputsize 200)",
+      "Bash(py -3.11 -m py_compile engine/pipeline.py engine/live_source.py)",
+      "Bash(py -3.11 -m engine.pipeline --mode backfill)",
+      "Bash(py -3.11 -m py_compile engine/pipeline.py)",
+      "Bash(py -3.11 -m engine.pipeline --mode live --dry-run --live-interval 15min --timeframe 5min)"
     ]
   }
 }

@@ -77,9 +77,10 @@ logger = logging.getLogger("engine.pipeline")
 # ── Credentials ───────────────────────────────────────────────────────────────
 R2_ENV_KEYS = ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT_URL", "R2_BUCKET_NAME"]
 D1_ENV_KEYS = ["D1_ACCOUNT_ID", "D1_DATABASE_ID", "D1_API_TOKEN"]
+TWELVEDATA_ENV_KEYS = ["TWELVEDATA_API_KEY"]
 
 
-def load_env(require_r2: bool = True, require_d1: bool = True) -> dict:
+def load_env(require_r2: bool = True, require_d1: bool = True, require_twelvedata: bool = False) -> dict:
     """
     Load credentials from the environment. python-dotenv is used to read a local
     .env if present, but is optional — GitHub Actions injects the real env vars
@@ -94,12 +95,14 @@ def load_env(require_r2: bool = True, require_d1: bool = True) -> dict:
     except ImportError:
         logger.debug("python-dotenv not installed; using ambient environment only")
 
-    cfg = {k: os.getenv(k) for k in (R2_ENV_KEYS + D1_ENV_KEYS)}
+    cfg = {k: os.getenv(k) for k in (R2_ENV_KEYS + D1_ENV_KEYS + TWELVEDATA_ENV_KEYS)}
     missing: list[str] = []
     if require_r2:
         missing += [k for k in R2_ENV_KEYS if not cfg.get(k)]
     if require_d1:
         missing += [k for k in D1_ENV_KEYS if not cfg.get(k)]
+    if require_twelvedata:
+        missing += [k for k in TWELVEDATA_ENV_KEYS if not cfg.get(k)]
     if missing:
         raise SystemExit(
             "Missing required environment variable(s): " + ", ".join(missing) +
@@ -413,6 +416,7 @@ class RunSummary:
     r2_rows: int = 0
     d1_rows: int = 0
     reconcile_detail: str = ""
+    notes: list[str] = field(default_factory=list)
     elapsed_s: float = 0.0
 
     @contextmanager
@@ -471,6 +475,8 @@ class RunSummary:
         ]
         if self.reconcile_detail:
             lines.append(f"    reconcile         {self.reconcile_detail}")
+        for note in self.notes:
+            lines.append(f"  note: {note}")
         lines += [
             f"  elapsed: {self.elapsed_s:.2f}s",
             f"  result: {'FAIL' if self.failed else 'PASS'}",
@@ -566,16 +572,25 @@ def run_pipeline(
     cfg: Optional[dict] = None,
     dry_run: bool = False,
     max_concurrent: int = 2,
+    live_interval: str = "1min",
+    live_outputsize: int = 500,
 ) -> RunSummary:
     """
     Run the full Bronze->Silver->Gold->R2/D1 chain for one symbol + date range.
 
     Returns a RunSummary (also logged). On the first stage failure the chain
     stops, remaining stages are marked 'skipped', and the summary still prints.
-    `mode` is recorded for traceability but does not change the transform chain —
-    range resolution (backfill vs live window) happens in the caller.
+
+    The Bronze *source* is the only mode-dependent part: backfill downloads
+    Dukascopy ticks (HistoryDownloader) and archives them to R2; live pulls recent
+    OHLC bars from Twelve Data (engine.live_source) and synthesizes ticks in
+    memory. Everything from Silver onward is identical for both modes. live_interval
+    / live_outputsize are ignored in backfill mode.
     """
     symbol = symbol.upper()
+    if mode == "live":
+        # Fail fast before any network/credit spend on a misconfigured interval.
+        _validate_live_intervals(live_interval, timeframe)
     summary = RunSummary(symbol, timeframe, mode, start, end, dry_run)
     t0 = time.perf_counter()
 
@@ -583,44 +598,81 @@ def run_pipeline(
     candles: Optional[pd.DataFrame] = None
 
     try:
-        # ── Bronze: download raw ticks to local Parquet ─────────────────────────
-        with summary.stage("bronze_download") as st:
-            downloader = HistoryDownloader(
-                symbol=symbol, output_dir=bronze_dir, max_concurrent=max_concurrent
-            )
-            dl = asyncio.run(downloader.download_range(start, end))
-            st.detail = (
-                f"saved={dl['ticks_saved']:,} files={dl['files_written']} "
-                f"resumed={dl['hours_resumed']} skipped={dl['hours_skipped']}"
-            )
-
-        # ── Bronze -> R2: merge each day, upload, and assemble the working set ──
-        with summary.stage("bronze_to_r2") as st:
-            r2 = None if dry_run else R2Uploader(cfg)  # type: ignore[arg-type]
-            frames: list[pd.DataFrame] = []
-            for d in _iter_days(start, end):
-                day_df = _read_day_ticks(bronze_dir, symbol, d)
-                if day_df is None or day_df.empty:
-                    continue
-                frames.append(day_df)
-                if r2 is not None:
-                    key = _r2_bronze_key(symbol, d)
-                    nbytes = r2.put_parquet(key, day_df, BRONZE_SCHEMA)
-                    summary.r2_objects += 1
-                    summary.r2_rows += len(day_df)
-                    logger.info("R2 PUT %s (%d ticks, %d bytes)", key, len(day_df), nbytes)
-
-            if not frames:
-                raise RuntimeError(
-                    f"No Bronze ticks found for {symbol} in {start}..{end} — "
-                    "nothing downloaded (all weekends/404s?)."
+        if mode == "live":
+            # ── Bronze (live): pull recent OHLC from Twelve Data, synthesize ticks ──
+            with summary.stage("bronze_download") as st:
+                # Lazy import keeps the backfill path free of the live adapter and
+                # its (optional) dependencies.
+                from engine.live_source import fetch_live_ticks
+                ticks = fetch_live_ticks(symbol, interval=live_interval, outputsize=live_outputsize)
+                if ticks.empty:
+                    raise RuntimeError(
+                        f"Twelve Data returned no live bars for {symbol} "
+                        f"(interval={live_interval}, outputsize={live_outputsize})."
+                    )
+                summary.ticks_ingested = len(ticks)
+                # Reflect the true fetched span in the summary header.
+                lo = _ensure_utc(ticks["timestamp_utc"].min())
+                hi = _ensure_utc(ticks["timestamp_utc"].max())
+                summary.start, summary.end = f"{lo:%Y-%m-%d}", f"{hi:%Y-%m-%d}"
+                st.detail = (
+                    f"twelvedata {live_interval} x{live_outputsize} -> "
+                    f"{len(ticks):,} synthetic ticks, span {lo:%Y-%m-%d %H:%M} -> {hi:%Y-%m-%d %H:%M}Z"
                 )
-            ticks = pd.concat(frames, ignore_index=True)
-            summary.ticks_ingested = len(ticks)
-            st.detail = (
-                f"{summary.r2_objects} objects / {summary.r2_rows:,} ticks uploaded"
-                if not dry_run else f"{len(ticks):,} ticks loaded (dry-run: R2 upload skipped)"
-            )
+
+            # ── Bronze -> R2 (live): held in memory; archival intentionally skipped ─
+            with summary.stage("bronze_to_r2") as st:
+                # TODO(live-archive): a live run fetches only a recent PARTIAL day.
+                # PUTting it under the per-day Bronze key (bronze/.../day=/ticks.parquet)
+                # would overwrite a fully-backfilled day with a sparse slice. Archiving
+                # live Bronze safely needs a read-existing -> merge -> write strategy
+                # (or a separate live key prefix) — deliberately deferred, not a bug.
+                st.status = "skipped"
+                st.detail = f"{len(ticks):,} live ticks held in memory (R2 archival skipped in live mode)"
+                summary.notes.append(
+                    "live Bronze->R2 archival intentionally SKIPPED — a partial-day live "
+                    "window would clobber backfilled Bronze without a merge strategy "
+                    "(separate task; live ticks still flow to Silver/Gold/D1)."
+                )
+        else:
+            # ── Bronze: download raw ticks to local Parquet ─────────────────────────
+            with summary.stage("bronze_download") as st:
+                downloader = HistoryDownloader(
+                    symbol=symbol, output_dir=bronze_dir, max_concurrent=max_concurrent
+                )
+                dl = asyncio.run(downloader.download_range(start, end))
+                st.detail = (
+                    f"saved={dl['ticks_saved']:,} files={dl['files_written']} "
+                    f"resumed={dl['hours_resumed']} skipped={dl['hours_skipped']}"
+                )
+
+            # ── Bronze -> R2: merge each day, upload, and assemble the working set ──
+            with summary.stage("bronze_to_r2") as st:
+                r2 = None if dry_run else R2Uploader(cfg)  # type: ignore[arg-type]
+                frames: list[pd.DataFrame] = []
+                for d in _iter_days(start, end):
+                    day_df = _read_day_ticks(bronze_dir, symbol, d)
+                    if day_df is None or day_df.empty:
+                        continue
+                    frames.append(day_df)
+                    if r2 is not None:
+                        key = _r2_bronze_key(symbol, d)
+                        nbytes = r2.put_parquet(key, day_df, BRONZE_SCHEMA)
+                        summary.r2_objects += 1
+                        summary.r2_rows += len(day_df)
+                        logger.info("R2 PUT %s (%d ticks, %d bytes)", key, len(day_df), nbytes)
+
+                if not frames:
+                    raise RuntimeError(
+                        f"No Bronze ticks found for {symbol} in {start}..{end} — "
+                        "nothing downloaded (all weekends/404s?)."
+                    )
+                ticks = pd.concat(frames, ignore_index=True)
+                summary.ticks_ingested = len(ticks)
+                st.detail = (
+                    f"{summary.r2_objects} objects / {summary.r2_rows:,} ticks uploaded"
+                    if not dry_run else f"{len(ticks):,} ticks loaded (dry-run: R2 upload skipped)"
+                )
 
         # ── Silver: normalise UTC -> derive mid price -> deduplicate ───────────
         with summary.stage("silver_clean") as st:
@@ -686,12 +738,50 @@ def _validate_date(s: str) -> str:
     return s
 
 
+_INTERVAL_SECONDS = {
+    "s": 1, "sec": 1, "secs": 1, "second": 1, "seconds": 1,
+    "min": 60, "mins": 60, "minute": 60, "minutes": 60, "t": 60,
+    "h": 3600, "hr": 3600, "hrs": 3600, "hour": 3600, "hours": 3600,
+    "d": 86400, "day": 86400, "days": 86400,
+}
+
+
+def _interval_seconds(tf: str) -> int:
+    """Parse a pandas-style timeframe ('1min', '5min', '4h', '1d') to seconds."""
+    m = re.fullmatch(r"\s*(\d+)\s*([a-zA-Z]+)\s*", tf)
+    if not m:
+        raise ValueError(f"Unrecognized timeframe {tf!r}; expected e.g. '1min', '5min', '4h', '1d'.")
+    n, unit = int(m.group(1)), m.group(2).lower()
+    if n <= 0:
+        raise ValueError(f"Timeframe magnitude must be positive, got {n} in {tf!r}.")
+    if unit not in _INTERVAL_SECONDS:
+        raise ValueError(f"Unrecognized timeframe unit {unit!r} in {tf!r}; supported: s / min / h / d.")
+    return n * _INTERVAL_SECONDS[unit]
+
+
+def _validate_live_intervals(live_interval: str, timeframe: str) -> None:
+    """
+    Hard-fail if the live fetch interval is not an exact divisor of (and <=) the
+    target timeframe. Otherwise synthetic ticks from a coarse fetch interval would
+    land in only the first sub-bucket of each target candle, silently producing
+    malformed OHLC. Fail loud at config time rather than emit bad candles.
+    """
+    iv, tf = _interval_seconds(live_interval), _interval_seconds(timeframe)
+    if iv > tf or tf % iv != 0:
+        raise ValueError(
+            f"--live-interval {live_interval!r} ({iv}s) must be <= and an exact divisor of "
+            f"--timeframe {timeframe!r} ({tf}s), or resampling produces malformed candles. "
+            f"Pick a live-interval that divides the timeframe (e.g. 1min into 5min)."
+        )
+
+
 def _resolve_range(mode: str, start: Optional[str], end: Optional[str], lookback_days: int) -> tuple[str, str]:
     """
-    Resolve (start, end) dates from the mode. backfill requires explicit dates;
-    live derives a recent window. The live *data source* is not built yet — live
-    reuses the historical HistoryDownloader path so the R2/D1 write path can be
-    verified. Swap the source here when a live feed is chosen.
+    Resolve (start, end) dates from the mode. backfill requires explicit dates.
+    live derives a placeholder recent window only for the summary header — the
+    live source (engine.live_source, Twelve Data /time_series) pulls the last
+    live_outputsize bars rather than a date range, and run_pipeline overwrites
+    start/end with the actual fetched span.
     """
     if mode == "backfill":
         if not (start and end):
@@ -702,9 +792,9 @@ def _resolve_range(mode: str, start: Optional[str], end: Optional[str], lookback
         today = datetime.now(timezone.utc).date()
         s = _validate_date(start) if start else (today - timedelta(days=lookback_days)).isoformat()
         e = _validate_date(end) if end else today.isoformat()
-        logger.warning(
-            "live mode uses the HistoryDownloader placeholder source over %s..%s "
-            "(a real live feed is a separate task).", s, e,
+        logger.info(
+            "live mode: sourcing recent OHLC from Twelve Data /time_series "
+            "(window shown %s..%s is approximate; the fetched bar span is authoritative).", s, e,
         )
         return s, e
 
@@ -723,6 +813,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--end", help="Range end YYYY-MM-DD (required for backfill)")
     p.add_argument("--lookback-days", type=int, default=1,
                    help="live mode: days back from today when --start is omitted (default: 1)")
+    p.add_argument("--live-interval", default="1min",
+                   help="live mode: Twelve Data time_series interval to fetch (default: 1min). "
+                        "Keep it <= --timeframe and a divisor of it so resampling stays correct.")
+    p.add_argument("--live-outputsize", type=int, default=500,
+                   help="live mode: number of bars to fetch from Twelve Data (default: 500). "
+                        "Size it so at least --atr-period candles exist after resampling.")
     p.add_argument("--timeframe", default="5min", help="Candle width, pandas-style (default: 5min)")
     p.add_argument("--atr-period", type=int, default=14, help="ATR look-back in bars (default: 14)")
     p.add_argument("--bronze-dir", default="data/bronze", help="Local Bronze Parquet dir (default: data/bronze)")
@@ -738,7 +834,21 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
 
     start, end = _resolve_range(args.mode, args.start, args.end, args.lookback_days)
-    cfg = None if args.dry_run else load_env(require_r2=True, require_d1=True)
+    if args.mode == "live":
+        try:
+            _validate_live_intervals(args.live_interval, args.timeframe)
+        except ValueError as exc:
+            raise SystemExit(str(exc))
+    # Live mode sources Bronze from Twelve Data (needs the API key, skips R2
+    # archival); backfill sources Dukascopy and archives to R2. Both write D1.
+    if args.dry_run:
+        cfg = None
+    else:
+        cfg = load_env(
+            require_r2=(args.mode == "backfill"),
+            require_d1=True,
+            require_twelvedata=(args.mode == "live"),
+        )
 
     summary = run_pipeline(
         symbol=args.symbol,
@@ -751,6 +861,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         cfg=cfg,
         dry_run=args.dry_run,
         max_concurrent=args.max_concurrent,
+        live_interval=args.live_interval,
+        live_outputsize=args.live_outputsize,
     )
     return 1 if summary.failed else 0
 
