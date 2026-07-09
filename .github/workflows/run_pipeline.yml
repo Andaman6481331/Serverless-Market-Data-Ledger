@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Live market-data pipeline (scheduled)
+#
+# Runs the Bronze->Silver->Gold->D1 pipeline in *live* mode every 15 minutes.
+# Live mode pulls recent OHLC bars from Twelve Data, synthesizes ticks in memory,
+# resamples to candles + ATR, and upserts them into Cloudflare D1. R2 (Bronze
+# archival) is intentionally NOT exercised in live mode, so no R2 secrets are
+# needed here — only the Twelve Data key and the three D1 credentials.
+#
+# The pipeline exits non-zero on any stage failure (engine.pipeline returns 1),
+# and nothing here swallows that, so failed runs show up red in the Actions tab.
+#
+# Trigger it by hand from the Actions tab (workflow_dispatch) for demos, or wait
+# for the next scheduled tick.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Live pipeline
+
+on:
+  schedule:
+    # Every 15 minutes (UTC). Note: GitHub may delay scheduled runs under load,
+    # so ticks are "at least every 15 min", not exactly on the boundary.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}  # allow manual runs from the GitHub UI (Actions tab)
+
+# Don't let a slow run overlap the next scheduled tick; queue instead of cancel
+# so an in-flight D1 write is never interrupted mid-run.
+concurrency:
+  group: live-pipeline
+  cancel-in-progress: false
+
+jobs:
+  run-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # a live fetch is quick; kill it if it hangs
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline (live mode)
+        env:
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+          D1_ACCOUNT_ID: ${{ secrets.D1_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+          D1_API_TOKEN: ${{ secrets.D1_API_TOKEN }}
+        run: python -m engine.pipeline --symbol XAUUSD --mode live
