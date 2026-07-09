@@ -1,7 +1,29 @@
-﻿__pycache__/
+﻿# Python
+__pycache__/
 *.pyc
 venv/
 .venv/
 *.parquet
 .env
 *.egg-info/
+
+# Node / JS (frontend/ + worker/)
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite / local env overrides
+*.local
+.env.local
+.env.*.local
+
+# Cloudflare Wrangler local cache/state (worker/.wrangler, etc.)
+.wrangler/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

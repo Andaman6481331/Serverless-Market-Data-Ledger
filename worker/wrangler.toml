@@ -1,0 +1,13 @@
+name = "market-data-api"
+main = "index.js"
+compatibility_date = "2026-07-09"
+
+# Native D1 binding. Because this Worker executes inside Cloudflare's network it
+# talks to D1 over the internal binding exposed as `env.DB` — NO account id, no
+# database id in code, and NO D1_API_TOKEN secret. (engine/pipeline.py needs the
+# HTTP API + bearer token because it runs OUTSIDE the network; this component does
+# not, which is exactly why the read path stays credential-free.)
+[[d1_databases]]
+binding = "DB"                                       # -> env.DB in index.js
+database_name = "xauusd_metrics"
+database_id = "99d829b6-09fc-4ddf-a4b3-abfa365b8ac9"

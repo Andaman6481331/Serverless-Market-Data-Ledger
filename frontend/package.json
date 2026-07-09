@@ -1,0 +1,20 @@
+{
+  "name": "market-data-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-page Vue 3 + Vite dashboard for the Serverless Market Data Ledger: XAUUSD candle chart and pipeline-health panel served from the read-only Cloudflare Worker API.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.0.7",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.0.7"
+  }
+}

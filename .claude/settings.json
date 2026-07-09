@@ -47,7 +47,22 @@
       "Bash(py -3.11 -m py_compile engine/pipeline.py engine/live_source.py)",
       "Bash(py -3.11 -m engine.pipeline --mode backfill)",
       "Bash(py -3.11 -m py_compile engine/pipeline.py)",
-      "Bash(py -3.11 -m engine.pipeline --mode live --dry-run --live-interval 15min --timeframe 5min)"
+      "Bash(py -3.11 -m engine.pipeline --mode live --dry-run --live-interval 15min --timeframe 5min)",
+      "Bash(node --check index.js)",
+      "Read(//c/Users/herby/AppData/Local/Temp/claude/d--GitHub-Serverless-Market-Data-Ledger/70bc575e-f052-4ae2-a780-11c9104dcb63/scratchpad/**)",
+      "Bash(node harness.mjs)",
+      "WebFetch(domain:market-data-api.shop-backend-kitweb.workers.dev)",
+      "WebFetch(domain:tradingview.github.io)",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\('lightweight-charts', require\\('./node_modules/lightweight-charts/package.json'\\).version\\); console.log\\('vue', require\\('./node_modules/vue/package.json'\\).version\\); console.log\\('vite', require\\('./node_modules/vite/package.json'\\).version\\)\")",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5199/)",
+      "Bash(curl -s http://localhost:5199/src/main.js)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://localhost:5199/src/App.vue\")",
+      "Bash(node --input-type=module -e \"import\\('lightweight-charts'\\).then\\(lc => { ['createChart','CandlestickSeries','LineSeries','CrosshairMode'].forEach\\(n => console.log\\(n, lc[n] !== undefined ? 'OK' : 'MISSING'\\)\\); }\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(git add *)"
     ]
   }
 }
