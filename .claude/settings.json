@@ -22,7 +22,23 @@
       "Read(//d/GitHub/GoldStream-ETL-Pipeline/data/bronze/XAUUSD/year=2015/month=01/**)",
       "Bash(py -3.11 -c \"import pandas, duckdb, pyarrow; print\\('pandas', pandas.__version__\\)\")",
       "Bash(py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\2f47084e-6773-4e26-beb5-ba744687cf9f\\\\scratchpad\\\\repro_gaps.py\")",
-      "Bash(py -3.11 -c ' *)"
+      "Bash(py -3.11 -c ' *)",
+      "Bash(py -3.11 -c \"import boto3, requests; print\\('boto3', boto3.__version__\\); print\\('requests', requests.__version__\\)\")",
+      "Bash(py -3.11 -c \"import dotenv; print\\('dotenv', dotenv.__version__\\)\")",
+      "Bash(py -3.11 -c \"import requests; print\\('requests', requests.__version__\\)\")",
+      "Bash(py -3.11 -c \"import pandas,pyarrow,duckdb,aiohttp; print\\('core deps ok'\\)\")",
+      "Bash(py -3.11 -m pip install \"boto3>=1.34,<2\" --quiet)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(py -3.11 -c \"import boto3; print\\('boto3', boto3.__version__\\)\")",
+      "Bash(py -3.11 -c \"import engine.pipeline as p; print\\('import OK'\\); print\\('plan:', p._PLAN\\)\")",
+      "Bash(py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\285945c2-2bac-4ae3-8ffd-da7df68eeabb\\\\scratchpad\\\\verify_pipeline.py\")",
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\285945c2-2bac-4ae3-8ffd-da7df68eeabb\\\\scratchpad\\\\verify_pipeline.py\")",
+      "Bash(PYTHONPATH=d:/GitHub/Serverless-Market-Data-Ledger py -3.11 -c ' *)",
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 -m engine.pipeline --help)",
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 -m engine.pipeline --symbol XAUUSD --start 2015-01-02 --end 2015-01-02 --dry-run --bronze-dir \"C:/Users/herby/AppData/Local/Temp/claude/d--GitHub-Serverless-Market-Data-Ledger/285945c2-2bac-4ae3-8ffd-da7df68eeabb/scratchpad/bronze_cli\")",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 -c \"import engine.pipeline; print\\('final import OK'\\)\")",
+      "Bash(PYTHONPATH=\"d:/GitHub/Serverless-Market-Data-Ledger\" py -3.11 \"C:\\\\Users\\\\herby\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--GitHub-Serverless-Market-Data-Ledger\\\\285945c2-2bac-4ae3-8ffd-da7df68eeabb\\\\scratchpad\\\\verify_reconcile.py\")"
     ]
   }
 }
