@@ -14,6 +14,9 @@ const props = defineProps({
   // Reactive "current time" (epoch-ms) driven by App.vue so the relative label
   // and status color stay live between the 60s API polls.
   now: { type: Number, default: () => Date.now() },
+  // Trading-session status from App (marketStatus()). Closed weekends must not
+  // read as an unhealthy pipeline.
+  market: { type: Object, default: () => ({ open: true }) },
 });
 
 // Minutes since the last ingest, computed client-side against the live clock so
@@ -27,6 +30,11 @@ const minutes = computed(() =>
 //   amber  20–60 min (one cycle missed — watch it)
 //   red    > 60 min  (stale — pipeline likely stuck)
 const status = computed(() => {
+  // Market closed (weekend) is expected, not a fault — never show Delayed/Stale
+  // just because no new bars arrive while the market is shut.
+  if (props.market && !props.market.open) {
+    return { level: 'closed', label: 'Markets closed' };
+  }
   const m = minutes.value;
   if (m == null) return { level: 'unknown', label: 'Unknown' };
   if (m < 20) return { level: 'healthy', label: 'Healthy' };
@@ -100,6 +108,9 @@ const showStaleWarning = computed(() => props.error && props.health);
         </div>
       </div>
 
+      <p v-if="!market.open" class="market-note">
+        {{ market.detail }} — no new bars are expected until then.
+      </p>
       <p v-if="showStaleWarning" class="stale-warning" role="alert">
         ⚠ Showing last known values — refresh failed ({{ error }})
       </p>
@@ -171,6 +182,11 @@ const showStaleWarning = computed(() => props.error && props.health);
   color: var(--text-muted);
   background: color-mix(in srgb, var(--text-muted) 12%, transparent);
   border-color: color-mix(in srgb, var(--text-muted) 30%, transparent);
+}
+.status-closed {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 @keyframes pulse {
@@ -252,6 +268,12 @@ const showStaleWarning = computed(() => props.error && props.health);
   margin: 0;
   font-size: 0.82rem;
   color: var(--warn);
+}
+
+.market-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
 }
 
 @media (max-width: 560px) {

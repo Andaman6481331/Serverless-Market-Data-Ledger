@@ -14,6 +14,9 @@ const props = defineProps({
   error: { type: String, default: null },
   symbol: { type: String, default: 'XAUUSD' },
   timeframe: { type: String, default: '5min' },
+  // Trading-session status from App (marketStatus()); drives the "Markets
+  // closed" badge so a flat weekend window reads as intentional.
+  market: { type: Object, default: () => ({ open: true }) },
 });
 
 const container = ref(null);
@@ -177,6 +180,11 @@ onBeforeUnmount(() => {
       <div class="chart-title">
         <h2>{{ symbol }}</h2>
         <span class="tf-badge">{{ timeframe }}</span>
+        <span
+          v-if="!market.open"
+          class="closed-badge"
+          :title="market.detail"
+        >Markets closed</span>
       </div>
       <div v-if="lastClose != null" class="last-price">
         <span class="price">{{ lastCloseLabel }}</span>
@@ -254,6 +262,15 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+.closed-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
 }
 
 .last-price {

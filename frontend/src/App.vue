@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import HealthCard from './components/HealthCard.vue';
 import CandleChart from './components/CandleChart.vue';
 import {
@@ -10,6 +10,7 @@ import {
   CANDLE_LIMIT,
 } from './api.js';
 import { formatRelativeTime } from './utils/format.js';
+import { marketStatus } from './utils/market.js';
 
 const REFRESH_MS = 60_000; // poll the Worker every 60s
 const CLOCK_MS = 5_000; // tick the local clock every 5s (keeps "x min ago" live)
@@ -26,6 +27,10 @@ const candlesLoading = ref(true);
 
 const now = ref(Date.now());
 const lastRefresh = ref(null); // epoch-ms of last *successful* refresh (either panel)
+
+// Trading-session status, recomputed off the ticking clock so the "Markets
+// closed" state appears/clears on its own across the weekend boundary.
+const market = computed(() => marketStatus(new Date(now.value)));
 
 let refreshTimer = null;
 let clockTimer = null;
@@ -91,7 +96,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="refresh-meta" aria-live="polite">
-        <span class="live-dot" aria-hidden="true"></span>
+        <span
+          v-if="!market.open"
+          class="market-badge"
+          :title="market.detail"
+        >● {{ market.label }}</span>
+        <span v-else class="live-dot" aria-hidden="true"></span>
         <span v-if="lastRefresh">
           Updated {{ formatRelativeTime(lastRefresh, now) }}
         </span>
@@ -106,6 +116,7 @@ onBeforeUnmount(() => {
         :loading="healthLoading"
         :error="healthError"
         :now="now"
+        :market="market"
       />
       <CandleChart
         :candles="candles"
@@ -113,6 +124,7 @@ onBeforeUnmount(() => {
         :error="candlesError"
         :symbol="SYMBOL"
         :timeframe="TIMEFRAME"
+        :market="market"
       />
     </main>
 
@@ -183,6 +195,18 @@ onBeforeUnmount(() => {
 }
 .refresh-hint {
   opacity: 0.7;
+}
+.market-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 @keyframes live {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); }
