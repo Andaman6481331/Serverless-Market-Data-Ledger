@@ -186,7 +186,13 @@ _D1_ON_CONFLICT = (
     "bar_low=excluded.bar_low,"
     "bar_close=excluded.bar_close,"
     "bar_volume=excluded.bar_volume,"
-    "atr=excluded.atr"
+    # Keep a previously-computed ATR when the incoming value is NULL (the ATR
+    # warm-up window). Live runs fetch OVERLAPPING windows, so an already-good
+    # bar is re-sent by later runs sitting in their warm-up zone; a plain
+    # excluded.atr assignment would clobber the real value with NULL. COALESCE
+    # preserves the first real ATR, while a non-NULL incoming value (e.g. the
+    # still-forming latest bar) still updates as normal.
+    "atr=COALESCE(excluded.atr,gold_candles.atr)"
 )
 # Headroom under D1's ~100 KB per-statement limit; the statement is pure ASCII so
 # character count == byte count.

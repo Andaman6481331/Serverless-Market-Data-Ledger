@@ -36,10 +36,16 @@ def compute_atr(candles: pd.DataFrame, period: int, col: str = "atr") -> pd.Data
     if len(candles) < period:
         candles[col] = np.nan
         return candles
-    candles[col] = AverageTrueRange(
+    atr = AverageTrueRange(
         high=candles["bar_high"],
         low=candles["bar_low"],
         close=candles["bar_close"],
         window=period,
     ).average_true_range()
+    # ta emits a literal 0.0 (not NaN) for the first `period - 1` warm-up bars,
+    # where ATR is genuinely undefined. Mask them to NaN by POSITION (never by
+    # value — a legitimately near-zero ATR during a flat/closed-market stretch
+    # must survive) so downstream persistence writes SQL NULL, not a bogus 0.
+    atr.iloc[: period - 1] = np.nan
+    candles[col] = atr
     return candles
