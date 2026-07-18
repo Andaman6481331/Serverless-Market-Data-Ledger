@@ -35,11 +35,14 @@ const MAX_LIMIT = 1000;
 const CANDLES_CACHE_SECONDS = 5;
 const HEALTH_CACHE_SECONDS = 10;
 
-// CORS: wide open for now. Lock `Access-Control-Allow-Origin` down to the real
-// frontend origin once it's deployed (single origin string, e.g.
-// "https://dashboard.example.com").
+// CORS: locked to the deployed dashboard origin (Cloudflare Pages). A single
+// STATIC origin (not request-origin reflection) is deliberate — it stays
+// compatible with the edge cache below (caches.default): every cached response
+// carries this same ACAO header, so there's no cross-origin cache-poisoning risk
+// that reflection would introduce. Update this if the dashboard origin changes.
+const ALLOWED_ORIGIN = "https://market-data-dashboard-62u.pages.dev";
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Max-Age": "86400",
